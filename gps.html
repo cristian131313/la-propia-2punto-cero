@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Seguimiento GPS con Excel</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    button {
+      margin: 5px;
+      padding: 10px 20px;
+      font-size: 16px;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+    }
+    #iniciar { background-color: #4CAF50; color: white; }
+    #finalizar { background-color: #f44336; color: white; }
+    table {
+      margin-top: 20px;
+      border-collapse: collapse;
+      width: 100%;
+    }
+    th, td {
+      border: 1px solid #333;
+      padding: 8px;
+      text-align: center;
+    }
+    th {
+      background-color: #f2f2f2;
+    }
+  </style>
+</head>
+<body>
+  <h1>Seguimiento de coordenadas</h1>
+  <p>Intervalo actual: <strong>1 segundo</strong></p>
+  <button id="iniciar">Iniciar seguimiento</button>
+  <button id="finalizar" disabled>Finalizar seguimiento</button>
+
+  <div id="tablaResultados">
+    <table id="tabla">
+      <thead>
+        <tr>
+          <th>Fecha y Hora</th>
+          <th>Latitud</th>
+          <th>Longitud</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <script>
+    let intervalo = 1000; // 🔹 Cada 1 segundo
+    let intervaloId;
+    let datos = [];
+
+    const btnIniciar = document.getElementById("iniciar");
+    const btnFinalizar = document.getElementById("finalizar");
+    const cuerpoTabla = document.querySelector("#tabla tbody");
+
+    function obtenerCoordenadas() {
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition((pos) => {
+          const fecha = new Date();
+          const fila = {
+            "Fecha y Hora": fecha.toLocaleDateString() + " " + fecha.toLocaleTimeString(),
+            "Latitud": pos.coords.latitude,
+            "Longitud": pos.coords.longitude
+          };
+
+          datos.push(fila);
+
+          // Agregar fila en la tabla
+          const nuevaFila = `
+            <tr>
+              <td>${fila["Fecha y Hora"]}</td>
+              <td>${fila["Latitud"]}</td>
+              <td>${fila["Longitud"]}</td>
+            </tr>`;
+          cuerpoTabla.innerHTML += nuevaFila;
+        }, (error) => {
+          console.error("Error al obtener coordenadas:", error);
+        });
+      } else {
+        alert("La geolocalización no es compatible con este navegador.");
+      }
+    }
+
+    btnIniciar.addEventListener("click", () => {
+      datos = [];
+      cuerpoTabla.innerHTML = "";
+      intervaloId = setInterval(obtenerCoordenadas, intervalo);
+      btnIniciar.disabled = true;
+      btnFinalizar.disabled = false;
+      alert("Seguimiento iniciado.");
+    });
+
+    btnFinalizar.addEventListener("click", () => {
+      clearInterval(intervaloId);
+      btnIniciar.disabled = false;
+      btnFinalizar.disabled = true;
+      alert("Seguimiento finalizado. Se descargará el archivo Excel.");
+      descargarExcel();
+    });
+
+    function descargarExcel() {
+      if (datos.length === 0) {
+        alert("No hay datos para exportar.");
+        return;
+      }
+
+      const ws = XLSX.utils.json_to_sheet(datos);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Coordenadas");
+
+      XLSX.writeFile(wb, "coordenadas.xlsx");
+    }
+  </script>
+</body>
+</html>
